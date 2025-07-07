@@ -3,7 +3,7 @@ from typing import List, Dict, Optional
 from langchain.tools import tool
 from pydantic import BaseModel, Field
 import json
-from .calendar_client import CalendarClient
+from calendar_client import CalendarClient
 
 
 # Initialize the calendar client

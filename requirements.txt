@@ -1,20 +1,14 @@
 # Core framework dependencies
-fastapi==0.104.1
-uvicorn==0.24.0
-streamlit==1.29.0
-
-# LangChain and LLM
-langchain==0.1.0
-langchain-google-genai==0.0.8
-google-generativeai==0.3.2
+fastapi>=0.100.0
+uvicorn>=0.20.0
+streamlit>=1.30.0
 
 # Google Calendar API
-google-auth==2.25.2
-google-auth-oauthlib==1.2.0
-google-auth-httplib2==0.2.0
-google-api-python-client==2.111.0
+google-auth>=2.20.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.100.0
 
 # Additional utilities
-python-dotenv==1.0.0
-pydantic==2.5.2
-requests==2.31.0
+python-dotenv>=1.0.0
+requests>=2.31.0

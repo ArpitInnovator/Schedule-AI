@@ -4,7 +4,7 @@ from langchain.agents import create_openai_functions_agent, AgentExecutor
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage, AIMessage
-from .agent_tools import calendar_tools
+from agent_tools import calendar_tools
 
 
 class BookingAgent:

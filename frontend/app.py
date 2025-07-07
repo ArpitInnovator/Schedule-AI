@@ -60,7 +60,10 @@ def check_backend_health() -> Dict:
     try:
         response = requests.get(f"{BACKEND_URL}/health", timeout=5)
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            # Add agent_available field for compatibility
+            data["agent_available"] = data.get("status") == "healthy"
+            return data
         else:
             return {"status": "error", "agent_available": False}
     except requests.exceptions.RequestException:
@@ -84,13 +87,13 @@ def send_message_to_backend(message: str, chat_history: List[Dict]) -> Dict:
             return response.json()
         else:
             return {
-                "success": False,
+                "status": "error",
                 "response": f"Backend error: {response.status_code}",
                 "error": "HTTP error"
             }
     except requests.exceptions.RequestException as e:
         return {
-            "success": False,
+            "status": "error",
             "response": f"Connection error: Could not reach the booking agent. Please check if the backend is running.",
             "error": str(e)
         }
@@ -102,7 +105,7 @@ def get_greeting_from_backend() -> str:
         response = requests.get(f"{BACKEND_URL}/greeting", timeout=5)
         if response.status_code == 200:
             data = response.json()
-            return data.get("greeting", "Hello! I'm your calendar booking assistant.")
+            return data.get("message", "Hello! I'm your calendar booking assistant.")
         else:
             return "Hello! I'm your calendar booking assistant."
     except requests.exceptions.RequestException:
@@ -174,16 +177,18 @@ if prompt := st.chat_input("Tell me what you'd like to schedule..."):
         with st.spinner("Thinking..."):
             result = send_message_to_backend(prompt, chat_history)
         
-        if result.get("success", False):
+        if result.get("status") == "success":
             response = result["response"]
             st.write(response)
             
             # Add assistant response to chat history
             st.session_state.messages.append({"role": "assistant", "content": response})
             
-            # Show intermediate steps if available (for debugging)
-            if result.get("intermediate_steps") and st.checkbox("Show reasoning steps", key=f"debug_{len(st.session_state.messages)}"):
-                st.json(result["intermediate_steps"])
+            # Show actions taken if available
+            if result.get("actions_taken"):
+                with st.expander("Actions Taken"):
+                    for action in result["actions_taken"]:
+                        st.write(f"✅ {action}")
                 
         else:
             error_response = result.get("response", "I'm having trouble processing your request.")
@@ -231,7 +236,7 @@ with st.sidebar:
             chat_history = st.session_state.messages[:-1]
             result = send_message_to_backend(action, chat_history)
             
-            if result.get("success", False):
+            if result.get("status") == "success":
                 response = result["response"]
                 st.session_state.messages.append({"role": "assistant", "content": response})
             else:
