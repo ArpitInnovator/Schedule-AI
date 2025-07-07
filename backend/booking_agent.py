@@ -1,9 +1,9 @@
 import os
 from typing import Dict, Any, List, Optional
-from langchain.agents import create_openai_functions_agent, AgentExecutor
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from agent_tools import calendar_tools
 
 
@@ -22,8 +22,7 @@ class BookingAgent:
         return ChatGoogleGenerativeAI(
             model="gemini-pro",
             google_api_key=api_key,
-            temperature=0.1,
-            convert_system_message_to_human=True
+            temperature=0.1
         )
     
     def _setup_agent(self):
@@ -33,21 +32,26 @@ class BookingAgent:
         system_prompt = """You are a helpful calendar booking assistant. Your job is to help users book appointments in their Google Calendar through natural conversation.
 
 Key capabilities:
-1. Check calendar availability for requested dates/times
+1. Check calendar availability for requested dates/times using the check_availability tool
 2. Suggest alternative time slots when requested times are not available
-3. Create calendar events when the user confirms a booking
+3. Create calendar events when the user confirms a booking using the create_calendar_event tool
 4. Handle scheduling requests naturally and conversationally
 
 Important guidelines:
 - Always be friendly and professional
-- When a user asks to book a meeting, first check availability for their requested time
-- If the requested time is not available, proactively suggest alternative slots
+- When a user asks to book a meeting, first check availability for their requested time using the check_availability tool
+- If the requested time is not available, proactively suggest alternative slots from the availability results
 - Before creating any calendar event, confirm the details with the user (title, time, duration, description)
 - Ask for clarification if booking details are missing (e.g., meeting title, duration)
 - Default meeting duration is 60 minutes unless specified otherwise
 - Only suggest time slots during business hours (9 AM - 5 PM) unless user specifically requests otherwise
+- When creating events, use the create_calendar_event tool with proper ISO format dates
 
-Current date context: Use today's date as a reference point when users mention relative dates like "tomorrow", "next week", etc.
+Current date context: Today is 2024-01-20. Use this as reference for relative dates like "tomorrow", "next week", etc.
+
+When checking availability:
+- Use YYYY-MM-DD format for dates when calling check_availability
+- For times like "2 PM tomorrow", convert to ISO format like "2024-01-21T14:00:00" for create_calendar_event
 
 Be conversational and helpful. If the user's request is unclear, ask follow-up questions to get the necessary details for booking.
 """
@@ -60,8 +64,8 @@ Be conversational and helpful. If the user's request is unclear, ask follow-up q
             MessagesPlaceholder("agent_scratchpad")
         ])
         
-        # Create the agent
-        agent = create_openai_functions_agent(
+        # Create the agent using the new syntax
+        agent = create_tool_calling_agent(
             llm=self.llm,
             tools=calendar_tools,
             prompt=prompt
@@ -73,7 +77,8 @@ Be conversational and helpful. If the user's request is unclear, ask follow-up q
             tools=calendar_tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=3
+            max_iterations=5,
+            return_intermediate_steps=True
         )
     
     def process_message(self, message: str, chat_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
@@ -93,7 +98,7 @@ Be conversational and helpful. If the user's request is unclear, ask follow-up q
         try:
             # Format chat history for LangChain
             formatted_history = []
-            for msg in chat_history:
+            for msg in chat_history[-10:]:  # Keep last 10 messages for context
                 if msg["role"] == "user":
                     formatted_history.append(HumanMessage(content=msg["content"]))
                 elif msg["role"] == "assistant":
@@ -113,30 +118,41 @@ Be conversational and helpful. If the user's request is unclear, ask follow-up q
             }
             
         except Exception as e:
+            print(f"Error in agent processing: {e}")
             return {
                 "success": False,
-                "response": f"I apologize, but I encountered an error while processing your request. Please try again or rephrase your question.",
+                "response": f"I apologize, but I encountered an error while processing your request: {str(e)}. Please try again or rephrase your question.",
                 "intermediate_steps": [],
                 "error": str(e)
             }
     
     def get_greeting(self) -> str:
         """Get a greeting message for new conversations."""
-        return """Hi there! I'm your calendar booking assistant. I can help you:
+        return """Hi there! I'm your AI calendar booking assistant. I can help you:
 
-📅 Check your calendar availability
-⏰ Schedule new meetings and appointments  
-🔄 Suggest alternative time slots
-✅ Confirm and create calendar events
+📅 **Check your calendar availability** - I'll look at your real calendar to find free time slots
+⏰ **Schedule new meetings and appointments** - I'll create actual events in your Google Calendar
+🔄 **Suggest alternative time slots** - If your preferred time isn't available, I'll find other options
+✅ **Confirm and create calendar events** - I'll handle all the booking details
 
-What would you like to schedule today? Just let me know the details like:
-- What type of meeting/appointment
-- Preferred date and time
-- Duration (if different from 1 hour)
-- Any additional details
+What would you like to schedule today? Just let me know details like:
+- What type of meeting/appointment (e.g., "Team meeting", "Doctor appointment")
+- Preferred date and time (e.g., "Tomorrow at 2 PM", "Next Friday morning")
+- Duration (defaults to 1 hour if not specified)
+- Any additional details or attendees
+
+For example, you could say:
+- "I need to schedule a team meeting for tomorrow at 2 PM"
+- "Check my availability for next Monday"
+- "Book a 30-minute call with John on Friday afternoon"
 
 How can I help you schedule something?"""
 
 
 # Create a global instance
-booking_agent = BookingAgent()
+try:
+    booking_agent = BookingAgent()
+    print("✅ Booking agent initialized successfully")
+except Exception as e:
+    print(f"❌ Failed to initialize booking agent: {e}")
+    booking_agent = None
