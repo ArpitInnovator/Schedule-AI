@@ -3,10 +3,10 @@ import json
 import pytz
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
-from google.auth.transport.requests import Request
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from google.auth.transport.requests import Request # type: ignore
+from google.oauth2 import service_account # type: ignore
+from googleapiclient.discovery import build # type: ignore
+from googleapiclient.errors import HttpError # type: ignore
 
 
 class CalendarClient:
@@ -40,7 +40,6 @@ class CalendarClient:
             
         except Exception as e:
             print(f"Error setting up Calendar service: {e}")
-            # For development, we'll create a mock service
             self.service = None
     
     def _parse_datetime_with_timezone(self, dt_str: str) -> datetime:
@@ -177,7 +176,7 @@ class CalendarClient:
                                 'end': (slot_start + timedelta(minutes=duration_minutes)).isoformat(),
                                 'duration_minutes': duration_minutes
                             })
-                        slot_start += timedelta(minutes=30)  # 30-minute intervals
+                        slot_start += timedelta(minutes=duration_minutes)  # Use meeting duration instead of 30-minute intervals
             
             current_time = max(current_time, busy_end)
         
@@ -194,12 +193,12 @@ class CalendarClient:
                             'end': (slot_start + timedelta(minutes=duration_minutes)).isoformat(),
                             'duration_minutes': duration_minutes
                         })
-                    slot_start += timedelta(minutes=30)
+                    slot_start += timedelta(minutes=duration_minutes)  # Use meeting duration instead of 30-minute intervals
         
         return available_slots[:10]  # Return top 10 slots
     
     def create_event(self, title: str, start_time: datetime, end_time: datetime, 
-                    description: str = "", attendees: Optional[List[str]] = None) -> Optional[Dict]:
+                    description: str = "") -> Optional[Dict]:
         """
         Create a new calendar event with Indian timezone.
         
@@ -208,7 +207,6 @@ class CalendarClient:
             start_time: Event start time
             end_time: Event end time
             description: Event description
-            attendees: List of attendee email addresses
             
         Returns:
             Created event details or mock data
@@ -243,9 +241,6 @@ class CalendarClient:
                     'timeZone': 'Asia/Kolkata',  # Indian timezone
                 },
             }
-            
-            if attendees:
-                event['attendees'] = [{'email': email} for email in attendees]
             
             created_event = self.service.events().insert(
                 calendarId=self.calendar_id,

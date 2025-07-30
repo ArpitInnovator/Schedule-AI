@@ -1,10 +1,11 @@
 import os
 from typing import Dict, Any, List, Optional
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain.agents import AgentExecutor, create_tool_calling_agent # type: ignore
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder # type: ignore
+from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
+from langchain_core.messages import HumanMessage, AIMessage # type: ignore
 from agent_tools import calendar_tools
+from datetime import datetime, timedelta
 
 
 class BookingAgent:
@@ -27,9 +28,16 @@ class BookingAgent:
     
     def _setup_agent(self):
         """Setup the agent with tools and prompt."""
+
+         # Get today's date in YYYY-MM-DD format
+        today_str = datetime.now().strftime("%Y-%m-%d")
+
+         # Calculate tomorrow's date for the example
+        tomorrow = datetime.now() + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime("%Y-%m-%d")
         
         # System prompt for the booking agent with Indian timezone
-        system_prompt = """You are a helpful calendar booking assistant configured for Indian timezone (IST). Your job is to help users book appointments in their Google Calendar through natural conversation.
+        system_prompt = f"""You are a helpful calendar booking assistant configured for Indian timezone (IST). Your job is to help users book appointments in their Google Calendar through natural conversation.
 
 Key capabilities:
 1. Check calendar availability for requested dates/times using the check_availability tool
@@ -49,11 +57,11 @@ Important guidelines:
 - When creating events, use the create_calendar_event tool with proper ISO format dates
 - Always mention IST when discussing times to avoid confusion
 
-Current date context: Today is 2024-01-20. Use this as reference for relative dates like "tomorrow", "next week", etc.
+Current date context: Today is {today_str}. Use this as reference for relative dates like "tomorrow", "next week", etc.
 
 When checking availability:
 - Use YYYY-MM-DD format for dates when calling check_availability
-- For times like "2 PM tomorrow", convert to ISO format like "2024-01-21T14:00:00" for create_calendar_event
+- For times like "2 PM tomorrow", convert to ISO format like "{tomorrow_str}T14:00:00" for create_calendar_event
 - All times will be interpreted as IST
 
 Be conversational and helpful. If the user's request is unclear, ask follow-up questions to get the necessary details for booking.
@@ -144,12 +152,12 @@ What would you like to schedule today? Just let me know details like:
 - What type of meeting/appointment (e.g., "Team meeting", "Doctor appointment")
 - Preferred date and time (e.g., "Tomorrow at 2 PM IST", "Next Friday morning")
 - Duration (defaults to 1 hour if not specified)
-- Any additional details or attendees
+- Any additional details
 
 For example, you could say:
 - "I need to schedule a team meeting for tomorrow at 2 PM IST"
 - "Check my availability for next Monday"
-- "Book a 30-minute call with John on Friday afternoon"
+- "Book a 30-minute call on Friday afternoon"
 
 How can I help you schedule something?"""
 

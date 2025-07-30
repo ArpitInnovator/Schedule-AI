@@ -1,7 +1,7 @@
 import pytz
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-from langchain.tools import tool
+from langchain.tools import tool # type: ignore
 from pydantic import BaseModel, Field
 import json
 from calendar_client import CalendarClient
@@ -24,8 +24,7 @@ class EventCreation(BaseModel):
     title: str = Field(..., description="Title of the meeting")
     start_datetime: str = Field(..., description="Start date and time in ISO format")
     end_datetime: str = Field(..., description="End date and time in ISO format")
-    description: str = Field("", description="Description of the meeting")
-    attendees: Optional[List[str]] = Field(None, description="List of attendee email addresses")
+    description: Optional[str] = Field(default="", description="Description of the meeting")
 
 
 @tool("check_availability", args_schema=AvailabilityQuery)
@@ -91,7 +90,7 @@ def check_availability(start_date: str, end_date: str, duration_minutes: int = 6
 
 @tool("create_calendar_event", args_schema=EventCreation)
 def create_calendar_event(title: str, start_datetime: str, end_datetime: str, 
-                         description: str = "", attendees: Optional[List[str]] = None) -> str:
+                         description: str = "") -> str:
     """
     Create a new calendar event in UTC+5:30 timezone.
     
@@ -100,7 +99,6 @@ def create_calendar_event(title: str, start_datetime: str, end_datetime: str,
         start_datetime: Start date and time in ISO format (e.g., "2024-01-15T14:00:00")
         end_datetime: End date and time in ISO format (e.g., "2024-01-15T15:00:00") 
         description: Description of the meeting
-        attendees: List of attendee email addresses
         
     Returns:
         JSON string with creation result
@@ -126,8 +124,7 @@ def create_calendar_event(title: str, start_datetime: str, end_datetime: str,
             title=title,
             start_time=start_dt,
             end_time=end_dt,
-            description=description,
-            attendees=attendees
+            description=description
         )
         
         if event:
