@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 # Configuration
-BACKEND_URL = "http://localhost:8000"  # Change this for production deployment
+BACKEND_URL = "https://booking-bot-backend-4znx.onrender.com"  
 
 st.set_page_config(
     page_title="ScheduleAI - Calendar Booking Assistant", 
